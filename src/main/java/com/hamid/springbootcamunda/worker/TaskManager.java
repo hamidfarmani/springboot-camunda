@@ -1,10 +1,13 @@
 package com.hamid.springbootcamunda.worker;
 
+import com.hamid.springbootcamunda.dto.TaskDto;
+import com.hamid.springbootcamunda.service.TaskService;
 import io.camunda.zeebe.client.api.response.ActivatedJob;
 import io.camunda.zeebe.client.api.worker.JobClient;
 import io.camunda.zeebe.spring.client.EnableZeebeClient;
 import io.camunda.zeebe.spring.client.annotation.ZeebeVariable;
 import io.camunda.zeebe.spring.client.annotation.ZeebeWorker;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -13,18 +16,25 @@ import java.util.UUID;
 @EnableZeebeClient
 @RestController
 @Slf4j
+@RequiredArgsConstructor
 public class TaskManager {
 
-    @ZeebeWorker(type = "connection_happend")
-    public void getInformation(final JobClient client, final ActivatedJob job, @ZeebeVariable String person_uuid) {
-        UUID recovery_certificate_uuid = UUID.randomUUID();
-        log.info("Generating certificate of recovery for person " + person_uuid +"...");
-        log.info("Generated certificate ID: " + recovery_certificate_uuid);
-        log.info("Storing Recovery Certificate in external database...");
+    private final TaskService taskService;
 
+    @ZeebeWorker(type = "task_creation")
+    public void createTask(final JobClient client, final ActivatedJob job,
+                           @ZeebeVariable String title,
+                           @ZeebeVariable String description,
+                           @ZeebeVariable String due_date) {
+        log.info("Creating a task with the title of {}", title);
+
+
+        TaskDto taskDto = taskService.createTask(TaskDto.builder().title(title).description(description).build());
         client.newCompleteCommand(job.getKey())
-                .variables("{\"recovery_certificate_uuid\": \"" + recovery_certificate_uuid + "\"}")
+                .variables("{\"id\": \"" + taskDto.getTitle() + "\"}")
                 .send()
-                .exceptionally( throwable -> { throw new RuntimeException("Could not complete job " + job, throwable); });
+                .exceptionally(throwable -> {
+                    throw new RuntimeException("Could not complete job " + job, throwable);
+                });
     }
 }
