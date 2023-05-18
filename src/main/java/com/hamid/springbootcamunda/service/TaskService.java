@@ -4,6 +4,7 @@ import com.hamid.springbootcamunda.dto.TaskDto;
 import com.hamid.springbootcamunda.model.Task;
 import com.hamid.springbootcamunda.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -28,6 +29,12 @@ public class TaskService {
         return convertToDto(savedTask);
     }
 
+    public TaskDto markAsDone(String id) {
+        Task task = taskRepository.findById(Long.valueOf(id)).orElseThrow(RuntimeException::new);
+        task.setStatus("Done");
+        return convertToDto(task);
+    }
+
     private TaskDto convertToDto(Task task) {
         return new TaskDto(
                 task.getTitle(),
@@ -45,4 +52,6 @@ public class TaskService {
                 taskDTO.getDueDate()
         );
     }
+
+
 }

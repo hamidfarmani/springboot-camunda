@@ -21,7 +21,7 @@ public class TaskManager {
 
     private final TaskService taskService;
 
-    @ZeebeWorker(type = "task_creation")
+    @ZeebeWorker(type = "create")
     public void createTask(final JobClient client, final ActivatedJob job,
                            @ZeebeVariable String title,
                            @ZeebeVariable String description,
@@ -30,6 +30,20 @@ public class TaskManager {
 
 
         TaskDto taskDto = taskService.createTask(TaskDto.builder().title(title).description(description).build());
+        client.newCompleteCommand(job.getKey())
+                .variables("{\"id\": \"" + taskDto.getTitle() + "\"}")
+                .send()
+                .exceptionally(throwable -> {
+                    throw new RuntimeException("Could not complete job " + job, throwable);
+                });
+    }
+
+    @ZeebeWorker(type = "done")
+    public void markAsDone(final JobClient client, final ActivatedJob job,
+                           @ZeebeVariable String id) {
+        log.info("Marking task as done with the id of {}", id);
+
+        TaskDto taskDto = taskService.markAsDone(id);
         client.newCompleteCommand(job.getKey())
                 .variables("{\"id\": \"" + taskDto.getTitle() + "\"}")
                 .send()
